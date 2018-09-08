@@ -1,0 +1,18 @@
+{
+  "name": "bugs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "ssh": "sudo gcloud compute ssh instance-1",
+    "deploy": "sudo gcloud compute scp --recurse *.json *.js instance-1:/home/bsscco/bugs"
+  },
+  "author": "bsscco@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3"
+  }
+}
