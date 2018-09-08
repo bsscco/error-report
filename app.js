@@ -11,6 +11,9 @@ const SLACK_TEST_CHANNEL_ID = config.slack_test_channel_id;
 const JIRA_ANDROID_DEVELOPER_USERNAME = config.jira_android_developer_username;
 const JIRA_IOS_DEVELOPER_USERNAME = config.jira_ios_developer_username;
 const JIRA_WEB_DEVELOPER_USERNAME = config.jira_web_developer_username;
+const SLACK_ANDROID_DEVELOPER_USER_ID = config.slack_android_developer_user_id;
+const SLACK_IOS_DEVELOPER_USER_ID = config.slack_ios_developer_user_id;
+const SLACK_WEB_DEVELOPER_USER_ID = config.slack_web_developer_user_id;
 const JIRA_USER_NAME = config.jira_username;
 const JIRA_PWD = config.jira_pwd;
 
@@ -47,12 +50,12 @@ app.post('/interact', (req, res) => {
         loginJira()
             .then(res => {
                 setCookie = res.headers['set-cookie'].join(';');
-                return createJiraIssues(input, platforms);
+                return createJiraIssues(setCookie, input, platforms);
             })
-            .then(res => doJiraIssueTransitions(platforms))
+            .then(res => doJiraIssueTransitions(setCookie, platforms))
             .then(res => sendSlackMsgsReportSaved(input, platforms))
             .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
-            .then(res => editJiraIssues(platforms))
+            .then(res => editJiraIssues(setCookie, platforms))
             .then(res => console.log(res.data))
             .catch(err => console.log(err.toString()));
     }
@@ -66,7 +69,8 @@ function getPlatforms(environment) {
             component: {id: "10601"},
             assignee: JIRA_IOS_DEVELOPER_USERNAME,
             transition: '61',
-            slackChannelId: SLACK_APP_CHANNEL_ID
+            slackChannelId: SLACK_APP_CHANNEL_ID,
+            slackDeveloperUserId: SLACK_IOS_DEVELOPER_USER_ID,
         });
     }
     if (/모두|모든|안드|and/g.test(environment.toLowerCase())) {
@@ -75,16 +79,18 @@ function getPlatforms(environment) {
             component: {id: "10602"},
             assignee: JIRA_ANDROID_DEVELOPER_USERNAME,
             transition: '61',
-            slackChannelId: SLACK_APP_CHANNEL_ID
+            slackChannelId: SLACK_APP_CHANNEL_ID,
+            slackDeveloperUserId: SLACK_ANDROID_DEVELOPER_USER_ID,
         });
     }
-    if (/모두|모든|웹|브라|web/g.test(environment.toLowerCase())) {
+    if (/모두|모든|웹|web|브라|사파리|safari|크롬|chrome|익스|expl|맥|mac|윈도우|window/g.test(environment.toLowerCase())) {
         platforms.push({
             platform: 'Web',
             component: {id: "10603"},
             assignee: JIRA_WEB_DEVELOPER_USERNAME,
             transition: '61',
-            slackChannelId: SLACK_WEB_CHANNEL_ID
+            slackChannelId: SLACK_WEB_CHANNEL_ID,
+            slackDeveloperUserId: SLACK_WEB_DEVELOPER_USER_ID,
         });
     }
     // if (/백|back|서버|server/g.test(environment.toLowerCase())) {
@@ -171,6 +177,13 @@ function makeReportDlgPayload() {
 
 function makeReportSavedMsgPayload(input, platform) {
     const fields = [];
+    if (platform) {
+        fields.push({
+            title: '담당자',
+            value: '<@' + platform.slackDeveloperUserId + '>',
+            short: false
+        });
+    }
     fields.push({
         title: '현상',
         value: input.situation,
@@ -199,7 +212,7 @@ function makeReportSavedMsgPayload(input, platform) {
     if (platform) {
         fields.push({
             title: '지라링크',
-            value: platform.platform + " : " + JIRA_SERVER_DOMAIN + '/browse/' + platform.issueKey,
+            value: JIRA_SERVER_DOMAIN + '/browse/' + platform.issueKey,
             short: false
         });
     }
@@ -239,7 +252,7 @@ function loginJira() {
     );
 }
 
-function createJiraIssues(input, platforms) {
+function createJiraIssues(setCookie, input, platforms) {
     return platforms.reduce((promiseChain, platform) => {
         return promiseChain.then((chainResults) => {
             return createJiraIssue(setCookie, makeJiraReportIssuePayload(input, platform))
@@ -261,7 +274,7 @@ function createJiraIssue(setCookie, data) {
     });
 }
 
-function doJiraIssueTransitions(platforms) {
+function doJiraIssueTransitions(setCookie, platforms) {
     return platforms.reduce((promiseChain, platform) => {
         return promiseChain.then((chainResults) => {
             return doJiraIssueTransition(setCookie, platform.issueKey, makeJiraReportTransitionReadyPayload(platform))
@@ -282,7 +295,7 @@ function doJiraIssueTransition(setCookie, issueKey, data) {
     });
 }
 
-function editJiraIssues(platforms) {
+function editJiraIssues(setCookie, platforms) {
     return platforms.reduce((promiseChain, platform) => {
         return promiseChain.then((chainResults) => {
             return editJiraIssue(setCookie, platform.issueKey, makeJiraReportSlackLinkAdditionPayload(platform))
@@ -351,22 +364,22 @@ app.listen(PORT, () => {
 });
 
 // 테스트 코드
-const input = {
-    situation: 'situation',
-    path: 'path',
-    environment: 'and ios',
-    reappearance: 'reappearance',
-}
-let setCookie = '';
-const platforms = getPlatforms(input.environment);
-loginJira()
-    .then(res => {
-        setCookie = res.headers['set-cookie'].join(';');
-        return createJiraIssues(input, platforms);
-    })
-    .then(res => doJiraIssueTransitions(platforms))
-    .then(res => sendSlackMsgsReportSaved(input, platforms))
-    // .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
-    .then(res => editJiraIssues(platforms))
-    .then(res => console.log(res.data))
-    .catch(err => console.log(err.toString()));
+// const input = {
+//     situation: 'situation',
+//     path: 'path',
+//     environment: 'and',
+//     reappearance: 'reappearance',
+// }
+// let setCookie = '';
+// const platforms = getPlatforms(input.environment);
+// loginJira()
+//     .then(res => {
+//         setCookie = res.headers['set-cookie'].join(';');
+//         return createJiraIssues(input, platforms);
+//     })
+//     .then(res => doJiraIssueTransitions(platforms))
+//     .then(res => sendSlackMsgsReportSaved(input, platforms))
+//     // .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
+//     .then(res => editJiraIssues(platforms))
+//     .then(res => console.log(res.data))
+//     .catch(err => console.log(err.toString()));
