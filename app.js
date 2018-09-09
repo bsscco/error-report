@@ -1,7 +1,7 @@
 console.log(new Date().toTimeString());
 
 const fs = require('fs');
-const config = JSON.parse(fs.readFileSync('config.json'));
+const config = JSON.parse(fs.readFileSync(__dirname + '/config.json'));
 const JIRA_SERVER_DOMAIN = config.jira_server_domain;
 const APP_ACCESS_TOKEN = config.app_access_token;
 const SLACK_DOMAIN = config.slack_domain;
