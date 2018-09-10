@@ -45,9 +45,14 @@ app.post('/interact', (req, res) => {
     const body = JSON.parse(req.body.payload);
     if (body.callback_id === 'save_report') {
         const input = body.submission;
+        input.slackReporterUserId = body.user.id;
         let setCookie = '';
         const platforms = getPlatforms(input.environment);
-        loginJira()
+        getSlackUser(input.slackReporterUserId)
+            .then(res => {
+                input.slackReporterUserNickname = res.data.user.profile.display_name;
+                return loginJira();
+            })
             .then(res => {
                 setCookie = res.headers['set-cookie'].join(';');
                 return createJiraIssues(setCookie, input, platforms);
@@ -100,6 +105,15 @@ function getPlatforms(environment) {
 }
 
 // slack
+function getSlackUser(userId) {
+    return axios.get('https://slack.com/api/users.info?user=' + userId, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + APP_ACCESS_TOKEN
+        }
+    });
+}
+
 function openSlackDlg(triggerId, payload) {
     return axios.post('https://slack.com/api/dialog.open', JSON.stringify({
         trigger_id: triggerId,
@@ -177,6 +191,11 @@ function makeReportDlgPayload() {
 
 function makeReportSavedMsgPayload(input, platform) {
     const fields = [];
+    fields.push({
+        title: '보고자',
+        value: '<@' + input.slackReporterUserId + '>',
+        short: false
+    });
     if (platform) {
         fields.push({
             title: '담당자',
@@ -318,6 +337,7 @@ function editJiraIssue(setCookie, issueKey, data) {
 
 function makeJiraReportIssuePayload(input, platform) {
     platform.description = '';
+    platform.description += '\nh2. 보고자 \n\n' + input.slackReporterUserNickname;
     platform.description += '\nh2. 현상 \n\n' + input.situation;
     platform.description += '\nh2. 발생 경로 \n\n' + input.path;
     platform.description += '\nh2. 사용환경 \n\n' + input.environment;
