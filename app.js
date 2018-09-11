@@ -349,7 +349,7 @@ function makeJiraReportIssuePayload(input, platform) {
             "issuetype": {"id": "10103" /*BugType*/},
             "summary": '[' + platform.platform + '] ' + input.situation,
             "assignee": {"name": platform.assignee},
-            "reporter": {"name": "bsscco"},
+            "reporter": {"name": "slack_bug"},
             "priority": {"id": "1" /*HIGHEST*/},
             "description": platform.description,
             "components": [platform.component],
