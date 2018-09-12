@@ -101,6 +101,16 @@ function getPlatforms(environment) {
     // if (/백|back|서버|server/g.test(environment.toLowerCase())) {
     //     platforms.push({platform: 'Server', component: {id: "10606"}, assignee: 'jinsik', transition: '331'});
     // }
+    if (/tttt/g.test(environment.toLowerCase())) {
+        platforms.push({
+            platform: 'Android',
+            component: {id: "10602"},
+            assignee: JIRA_ANDROID_DEVELOPER_USERNAME,
+            transition: '61',
+            slackChannelId: SLACK_TEST_CHANNEL_ID,
+            slackDeveloperUserId: SLACK_ANDROID_DEVELOPER_USER_ID,
+        });
+    }
     return platforms;
 }
 
@@ -403,3 +413,15 @@ app.listen(PORT, () => {
 //     .then(res => editJiraIssues(platforms))
 //     .then(res => console.log(res.data))
 //     .catch(err => console.log(err.toString()));
+
+
+1. 내용
+타유저 마이홈 팔로우 버튼 클릭이 안됩니다.
+    Ex. https://ohou.se/users/202382
+(1) 팔로우 버튼 클릭시 버튼이 안먹힘
+(2) 퍌로우 클릭후 새로고침해도 안먹힘
+
+2. 경로
+웹 > 타유저 마이홈
+
+3. 웹 / 크롬 (edited)
