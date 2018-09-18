@@ -408,47 +408,47 @@ app.listen(PORT, () => {
 });
 
 // 테스트 코드
-const input = {
-    situation: '힘\n' +
-    '\n' +
-    '2. 경로',
-    path: 'path',
-    environment: 'tttt',
-    assignee: '비스코',
-    reappearance: 'reappearance',
-}
-let saveData = {};
-saveData.input = input;
-saveData.platform = getPlatform(saveData.input.environment);
-saveData.reporterSlackUser = {profile: {display_name: '비스코'}};
-let setCookie = '';
-let slackUsers;
-let jiraUsers;
-let slackJiraUsers;
-
-loginJira()
-    .then(res => {
-        setCookie = res.headers['set-cookie'].join(';');
-        return getSlackUsers();
-    })
-    .then(res => {
-        slackUsers = res;
-        return getJiraUsers(setCookie);
-    })
-    .then(res => {
-        jiraUsers = res.data.values;
-
-        slackJiraUsers = jiraUsers.filter(jiraUser => {
-            slackUsers.filter(slackUser => {
-                if (jiraUser.displayName === saveData.input.assignee && saveData.input.assignee === slackUser.profile.display_name) {
-                    saveData.assigneeSlackUser = slackUser;
-                    saveData.assigneeJiraUser = jiraUser;
-                }
-            });
-        });
-
-        return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
-    })
+// const input = {
+//     situation: '힘\n' +
+//     '\n' +
+//     '2. 경로',
+//     path: 'path',
+//     environment: 'tttt',
+//     assignee: '비스코',
+//     reappearance: 'reappearance',
+// }
+// let saveData = {};
+// saveData.input = input;
+// saveData.platform = getPlatform(saveData.input.environment);
+// saveData.reporterSlackUser = {profile: {display_name: '비스코'}};
+// let setCookie = '';
+// let slackUsers;
+// let jiraUsers;
+// let slackJiraUsers;
+//
+// loginJira()
+//     .then(res => {
+//         setCookie = res.headers['set-cookie'].join(';');
+//         return getSlackUsers();
+//     })
+//     .then(res => {
+//         slackUsers = res;
+//         return getJiraUsers(setCookie);
+//     })
+//     .then(res => {
+//         jiraUsers = res.data.values;
+//
+//         slackJiraUsers = jiraUsers.filter(jiraUser => {
+//             slackUsers.filter(slackUser => {
+//                 if (jiraUser.displayName === saveData.input.assignee && saveData.input.assignee === slackUser.profile.display_name) {
+//                     saveData.assigneeSlackUser = slackUser;
+//                     saveData.assigneeJiraUser = jiraUser;
+//                 }
+//             });
+//         });
+//
+//         return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
+//     })
 //     .then(res => doJiraIssueTransition(setCookie, saveData.slackJiraUser.jira.key, makeJiraReportTransitionReadyPayload(saveData.platform)))
 //     .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
 // .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
