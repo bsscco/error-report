@@ -371,7 +371,7 @@ function makeJiraReportIssuePayload(saveData) {
         "fields": {
             "project": {"id": "10400"/*OK-KANBAN*/},
             "issuetype": {"id": "10103" /*BugType*/},
-            "summary": '[' + saveData.platform.platform + '] ' + saveData.input.situation.replace(/\n/g, ' '),
+            "summary": '[' + saveData.platform.platform + '] ' + saveData.input.situation.replace(/\n/g, ' ').substr(0, 100),
             "assignee": {"name": saveData.assigneeJiraUser.name},
             "reporter": {"name": "slack_bug"},
             "priority": {"id": "1" /*HIGHEST*/},
@@ -409,9 +409,7 @@ app.listen(PORT, () => {
 
 // 테스트 코드
 // const input = {
-//     situation: '힘\n' +
-//     '\n' +
-//     '2. 경로',
+//     situation: '사진피드에서 (필터값은 인기순으로 소팅된 상태) 좋아요/스크랩 클릭했는데 화면에서 클릭 전 보이던 숫자가 반토막 또는 마이너스 됨. 그래서 사진 디테일 들어가면 클릭 전 보였던 숫자가 맞음. 뒤로가기 해서 나오면 내가 좋아요/스크랩 클릭을 안 했다고 되어있음 (빈하트, 빈책갈피 표시) 그래서 다시 누르려고 하면 클릭이 안 됨. (이미 눌러진 상태인데 보이는 것만 이렇게 보임) 그래서 스크랩 클릭하면 이미 스크랩한 콘텐츠입니다(2)라는 안내메세지가 하단에 뜸.',
 //     path: 'path',
 //     environment: 'tttt',
 //     assignee: '비스코',
