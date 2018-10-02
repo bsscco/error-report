@@ -106,19 +106,19 @@ function getPlatform(environment) {
         transition: '331',
         slackChannelId: SLACK_APP_CHANNEL_ID,
     };
-    if (/모두|모든|아이|ios/g.test(environment.toLowerCase())) {
+    if (/아이|ios/g.test(environment.toLowerCase())) {
         platform.platform = 'iOS';
         platform.component = {id: "10601"};
         platform.transition = '61';
         platform.slackChannelId = SLACK_APP_CHANNEL_ID;
     }
-    if (/모두|모든|안드|and/g.test(environment.toLowerCase())) {
+    if (/안드|and/g.test(environment.toLowerCase())) {
         platform.platform = 'Android';
         platform.component = {id: "10602"};
         platform.transition = '61';
         platform.slackChannelId = SLACK_APP_CHANNEL_ID;
     }
-    if (/모두|모든|웹|web|브라|사파리|safari|크롬|chrome|익스|expl|맥|mac|윈도우|window/g.test(environment.toLowerCase())) {
+    if (/웹|web|브라|사파리|safari|크롬|chrome|익스|expl|맥|mac|윈도우|window/g.test(environment.toLowerCase())) {
         platform.platform = 'Web';
         platform.component = {id: "10603"};
         platform.transition = '61';
@@ -146,7 +146,7 @@ function getAssignee(assignee, platform) {
         if (platform === 'Android') {
             return DEVELOPER_LIST[3].value;
         } else if (platform === 'iOS') {
-            return DEVELOPER_LIST[1].value;
+            return DEVELOPER_LIST[2].value;
         } else if (platform === 'Server') {
             return DEVELOPER_LIST[0].value;
         } else if (platform === 'Web') {
