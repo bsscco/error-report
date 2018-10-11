@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "ssh": "sudo gcloud compute ssh instance-1",
-    "deploy": "sudo gcloud compute scp --recurse *.json *.js *.sh instance-1:/home/bsscco/bugs"
+    "deploy": "sudo gcloud compute scp --recurse *.json *.js *.sh instance-1:/home/bsscco/bugs",
+    "deploytest": "sudo gcloud compute scp --recurse *.json *.js *.sh instance-1:/home/bsscco/bugs-test"
   },
   "author": "bsscco@gmail.com",
   "license": "ISC",

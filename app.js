@@ -5,12 +5,11 @@ const config = JSON.parse(fs.readFileSync(__dirname + '/config.json'));
 const JIRA_SERVER_DOMAIN = config.jira_server_domain;
 const APP_ACCESS_TOKEN = config.app_access_token;
 const SLACK_DOMAIN = config.slack_domain;
-const SLACK_APP_CHANNEL_ID = config.slack_app_channel_id;
-const SLACK_WEB_CHANNEL_ID = config.slack_web_channel_id;
-const SLACK_TEST_CHANNEL_ID = config.slack_test_channel_id;
 const JIRA_USER_NAME = config.jira_username;
 const JIRA_PWD = config.jira_pwd;
 const DEVELOPER_LIST = config.developer_list;
+const CHANNEL_LIST = config.channel_list;
+const PLATFORM_LIST = config.platform_list;
 
 const express = require('express');
 const axios = require('axios');
@@ -41,11 +40,9 @@ app.post('/interact', (req, res) => {
     if (body.callback_id === 'save_report') {
         const saveData = {};
         saveData.input = body.submission;
-        saveData.platform = getPlatform(saveData.input.environment);
-        saveData.input.assignee = getAssignee(saveData.input.assignee, saveData.platform.platform);
-        if (saveData.assignee === DEVELOPER_LIST[0].value) {
-            saveData.platform.component.id = '10606';
-            saveData.platform.transition = '331'
+        saveData.platform = getPlatform(saveData.input.assignee);
+        if (saveData.input.environment === 'tttt') {
+            saveData.input.channel = 'CASU375FD';
         }
         let setCookie = '';
         let slackUsers = [];
@@ -99,72 +96,33 @@ app.post('/interact', (req, res) => {
     }
 });
 
-function getPlatform(environment) {
-    let platform = {
-        platform: '기타',
-        component: {id: "10606"},
-        transition: '331',
-        slackChannelId: SLACK_APP_CHANNEL_ID,
-    };
-    if (/아이|ios/g.test(environment.toLowerCase())) {
-        platform.platform = 'iOS';
-        platform.component = {id: "10601"};
-        platform.transition = '61';
-        platform.slackChannelId = SLACK_APP_CHANNEL_ID;
-    }
-    if (/안드|and/g.test(environment.toLowerCase())) {
-        platform.platform = 'Android';
-        platform.component = {id: "10602"};
-        platform.transition = '61';
-        platform.slackChannelId = SLACK_APP_CHANNEL_ID;
-    }
-    if (/웹|web|브라|사파리|safari|크롬|chrome|익스|expl|맥|mac|윈도우|window/g.test(environment.toLowerCase())) {
-        platform.platform = 'Web';
-        platform.component = {id: "10603"};
-        platform.transition = '61';
-        platform.slackChannelId = SLACK_WEB_CHANNEL_ID;
-    }
-    if (/백|back|서버|server/g.test(environment.toLowerCase())) {
-        platform.platform = 'Server';
-        platform.component = {id: "10606"};
-        platform.transition = '331';
-        platform.slackChannelId = SLACK_WEB_CHANNEL_ID;
-    }
-    if (/tttt/g.test(environment.toLowerCase())) {
-        platform.platform = 'Android';
-        platform.component = {id: "10602"};
-        platform.transition = '61';
-        platform.slackChannelId = SLACK_TEST_CHANNEL_ID;
-    }
-    return platform;
-}
-
-function getAssignee(assignee, platform) {
-    if (assignee) {
-        return assignee;
-    } else {
-        if (platform === 'Android') {
-            return DEVELOPER_LIST[3].value;
-        } else if (platform === 'iOS') {
-            return DEVELOPER_LIST[2].value;
-        } else if (platform === 'Server') {
-            return DEVELOPER_LIST[0].value;
-        } else if (platform === 'Web') {
-            return DEVELOPER_LIST[5].value;
-        } else {
-            return DEVELOPER_LIST[0].value;
+function getPlatform(assignee) {
+    let developer;
+    for (const idx in DEVELOPER_LIST) {
+        const d = DEVELOPER_LIST[idx];
+        if (d.value === assignee) {
+            developer = d;
+            break;
         }
     }
+    for (const idx in PLATFORM_LIST) {
+        const p = PLATFORM_LIST[idx];
+        if (p.platform === developer.platform) {
+            return p;
+        }
+    }
+    return PLATFORM_LIST[3];
 }
 
 // slack
 function getSlackUsers() {
-    return axios.get('https://slack.com/api/users.list', {
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + APP_ACCESS_TOKEN
-        }
-    })
+    return axios
+        .get('https://slack.com/api/users.list', {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + APP_ACCESS_TOKEN
+            }
+        })
         .then(res => {
             const liveMembers = res.data.members.filter(member => {
                 if (member.deleted || member.is_bot || member.id === 'USLACKBOT' || member.is_restricted) {
@@ -206,13 +164,14 @@ function makeReportDlgPayload() {
                 name: 'situation',
                 placeholder: '필터를 누르면 강제종료 됩니다.',
                 value: null,
-                optional: false
+                optional: false,
+                hint: '스크린샷은 스레드에 댓글로 달아주세요.',
             },
             {
                 type: 'textarea',
-                label: '발생 경로',
+                label: '발생경로 & 재현가능여부',
                 name: 'path',
-                placeholder: '메인>스토어>자취가구피드>필터 영역',
+                placeholder: '메인>스토어>자취가구피드>필터 영역\n재현가능: O',
                 value: null,
                 optional: false
             },
@@ -226,23 +185,22 @@ function makeReportDlgPayload() {
             },
             {
                 type: 'select',
-                label: '예상 담당자(선택사항)',
+                label: '예상 담당자',
                 name: 'assignee',
                 placeholder: null,
                 value: null,
-                optional: true,
-                options: DEVELOPER_LIST,
-                hint: '비워두시면 사용환경에 따라 자동으로 채워집니다.'
+                optional: false,
+                options: DEVELOPER_LIST
             },
             {
-                type: 'text',
-                label: '재현가능여부',
-                name: 'reappearance',
-                placeholder: 'O',
-                hint: '스크린샷은 스레드에 댓글로 달아주세요.',
+                type: 'select',
+                label: '리포팅 채널',
+                name: 'channel',
+                placeholder: null,
                 value: null,
-                optional: false
-            }
+                optional: false,
+                options: CHANNEL_LIST
+            },
         ]
     };
     return json;
@@ -266,18 +224,13 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         short: false
     });
     fields.push({
-        title: '발생 경로',
+        title: '발생경로 & 재현가능여부',
         value: saveData.input.path,
         short: false
     });
     fields.push({
         title: '사용환경',
         value: saveData.input.environment,
-        short: false
-    });
-    fields.push({
-        title: '재현가능여부',
-        value: saveData.input.reappearance,
         short: false
     });
     fields.push({
@@ -300,7 +253,7 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         ]
     };
     if (forChannelMsg) {
-        json.channel = saveData.platform.slackChannelId;
+        json.channel = saveData.input.channel;
     }
     return json;
 }
@@ -363,9 +316,8 @@ function makeJiraReportIssuePayload(saveData) {
     saveData.jiraReport.description = '';
     saveData.jiraReport.description += '\nh2. 보고자 \n\n' + saveData.reporterSlackUser.profile.display_name;
     saveData.jiraReport.description += '\nh2. 현상 \n\n' + saveData.input.situation;
-    saveData.jiraReport.description += '\nh2. 발생 경로 \n\n' + saveData.input.path;
+    saveData.jiraReport.description += '\nh2. 발생경로 & 재현가능여부\n\n' + saveData.input.path;
     saveData.jiraReport.description += '\nh2. 사용환경 \n\n' + saveData.input.environment;
-    saveData.jiraReport.description += '\nh2. 재현가능여부 \n\n' + saveData.input.reappearance;
 
     const json = {
         "fields": {
@@ -402,6 +354,7 @@ function makeJiraReportSlackLinkAdditionPayload(saveData) {
 
 // Start the server
 const PORT = process.env.PORT || 10000;
+// const PORT = process.env.PORT || 55000;
 app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}`);
     console.log('Press Ctrl+C to quit.');
@@ -409,15 +362,15 @@ app.listen(PORT, () => {
 
 // 테스트 코드
 // const input = {
-//     situation: '사진피드에서 (필터값은 인기순으로 소팅된 상태) 좋아요/스크랩 클릭했는데 화면에서 클릭 전 보이던 숫자가 반토막 또는 마이너스 됨. 그래서 사진 디테일 들어가면 클릭 전 보였던 숫자가 맞음. 뒤로가기 해서 나오면 내가 좋아요/스크랩 클릭을 안 했다고 되어있음 (빈하트, 빈책갈피 표시) 그래서 다시 누르려고 하면 클릭이 안 됨. (이미 눌러진 상태인데 보이는 것만 이렇게 보임) 그래서 스크랩 클릭하면 이미 스크랩한 콘텐츠입니다(2)라는 안내메세지가 하단에 뜸.',
+//     situation: 'situationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituation',
 //     path: 'path',
 //     environment: 'tttt',
 //     assignee: '비스코',
-//     reappearance: 'reappearance',
+//     channel: 'CASU375FD',
 // }
 // let saveData = {};
 // saveData.input = input;
-// saveData.platform = getPlatform(saveData.input.environment);
+// saveData.platform = getPlatform(saveData.input.assignee);
 // saveData.reporterSlackUser = {profile: {display_name: '비스코'}};
 // let setCookie = '';
 // let slackUsers;
@@ -447,9 +400,12 @@ app.listen(PORT, () => {
 //
 //         return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
 //     })
-//     .then(res => doJiraIssueTransition(setCookie, saveData.slackJiraUser.jira.key, makeJiraReportTransitionReadyPayload(saveData.platform)))
-//     .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
+//     .then(res => {
+//         saveData.jiraReport.issueKey = res.data.key;
+//         return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
+//     })
+    // .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
 // .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
 //     .then(res => editJiraIssues(platforms))
 //     .then(res => console.log(res.data))
-//     .catch(err => console.log(err.toString()));
+//     .catch(err => console.log(JSON.stringify(err.response.data)));
