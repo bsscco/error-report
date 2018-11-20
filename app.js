@@ -342,7 +342,7 @@ function makeJiraReportTransitionReadyPayload(platform) {
 }
 
 function makeJiraReportSlackLinkAdditionPayload(saveData) {
-    saveData.jiraReport.description += '\nh2. 슬랙링크 \n\n' + SLACK_DOMAIN + '/archives/' + saveData.platform.slackChannelId + '/p' + saveData.slackMsg.ts.replace('.', '');
+    saveData.jiraReport.description += '\nh2. 슬랙링크 \n\n' + SLACK_DOMAIN + '/archives/' + saveData.input.channel + '/p' + saveData.slackMsg.ts.replace('.', '');
     const json = {
         "fields": {
             "description": saveData.jiraReport.description,
