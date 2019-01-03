@@ -239,6 +239,7 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         short: false
     });
     const json = {
+        text: '<@' + config.qa_manager + '>',
         attachments: [
             {
                 title: '버그리포팅 등록 완료',
