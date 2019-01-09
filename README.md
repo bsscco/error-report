@@ -1,5 +1,5 @@
-# bugs
-슬랙에서 버그리포팅 하기
+# error-report
+슬랙에서 오류리포팅 하기
 
 ### 라이브러리
 - axios
@@ -12,4 +12,4 @@
 
 ### crontab
 - ```chmod 777 chkproc.sh```
-- ```* * * * * /home/bsscco/bugs/chkproc.sh > /home/bsscco/bugs/crontab-chkproc.log 2>&1```
+- ```* * * * * /home/bsscco/error-report/chkproc.sh > /home/bsscco/error-report/crontab-chkproc.log 2>&1```

@@ -2,14 +2,6 @@ console.log(new Date().toTimeString());
 
 const fs = require('fs');
 const config = JSON.parse(fs.readFileSync(__dirname + '/config.json'));
-const JIRA_SERVER_DOMAIN = config.jira_server_domain;
-const APP_ACCESS_TOKEN = config.app_access_token;
-const SLACK_DOMAIN = config.slack_domain;
-const JIRA_USER_NAME = config.jira_username;
-const JIRA_PWD = config.jira_pwd;
-const DEVELOPER_LIST = config.developer_list;
-const CHANNEL_LIST = config.channel_list;
-const PLATFORM_LIST = config.platform_list;
 
 const express = require('express');
 const axios = require('axios');
@@ -20,7 +12,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
-    res.status(200).send('Hello, Bugs!!').end();
+    res.status(200).send('Hello, Error Report!!').end();
 });
 
 app.post('/command', (req, res) => {
@@ -38,7 +30,7 @@ app.post('/interact', (req, res) => {
 
     const body = JSON.parse(req.body.payload);
     if (body.callback_id === 'save_report') {
-        const saveData = {};
+        const saveData = {trackSlackUsers: []};
         saveData.input = body.submission;
         saveData.platform = getPlatform(saveData.input.assignee);
         if (saveData.input.environment === 'tttt') {
@@ -46,19 +38,34 @@ app.post('/interact', (req, res) => {
         }
         let setCookie = '';
         let slackUsers = [];
+        console.log('login');
         loginJira()
             .then(res => {
-                console.log('login');
+                console.log('logined');
                 setCookie = res.headers['set-cookie'].join(';');
                 return getSlackUsers();
             })
             .then(res => {
-                console.log('getSlackUsers');
+                console.log('gotSlackUsers');
                 slackUsers = res;
+                return getUserGroups();
+            })
+            .then(res => {
+                console.log('gotUsergroups ' + res.data.usergroups.length);
+                for (const idx in res.data.usergroups) {
+                    const userGroup = res.data.usergroups[idx];
+                    console.log(userGroup.id);
+                    console.log(saveData.input.track);
+                    console.log(config.track_list[saveData.input.track].user_group_handle);
+                    if (userGroup.handle === config.track_list[saveData.input.track].user_group_handle) {
+                        saveData.trackSlackUserGroup = userGroup;
+                        break;
+                    }
+                }
                 return getJiraUsers(setCookie);
             })
             .then(res => {
-                console.log('getJiraUsers');
+                console.log('gotJiraUsers');
                 slackUsers.filter(slackUser => {
                     res.data.values.filter(jiraUser => {
                         if (jiraUser.displayName === saveData.input.assignee && slackUser.profile.display_name === saveData.input.assignee) {
@@ -74,17 +81,17 @@ app.post('/interact', (req, res) => {
                 return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
             })
             .then(res => {
-                console.log('createJiraIssue');
+                console.log('createdJiraIssue');
                 saveData.jiraReport.issueKey = res.data.key;
 
                 return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
             })
             .then(res => {
-                console.log('doJiraIssueTransition');
+                console.log('didJiraIssueTransition');
                 return sendSlackMsg('', makeReportSavedMsgPayload(saveData, true));
             })
             .then(res => {
-                console.log('sendSlackMsg');
+                console.log('sentSlackMsg');
                 saveData.slackMsg = {};
                 saveData.slackMsg.ts = res.data.ts;
 
@@ -98,20 +105,20 @@ app.post('/interact', (req, res) => {
 
 function getPlatform(assignee) {
     let developer;
-    for (const idx in DEVELOPER_LIST) {
-        const d = DEVELOPER_LIST[idx];
+    for (const idx in config.developer_list) {
+        const d = config.developer_list[idx];
         if (d.value === assignee) {
             developer = d;
             break;
         }
     }
-    for (const idx in PLATFORM_LIST) {
-        const p = PLATFORM_LIST[idx];
+    for (const idx in config.platform_list) {
+        const p = config.platform_list[idx];
         if (p.platform === developer.platform) {
             return p;
         }
     }
-    return PLATFORM_LIST[3];
+    return config.platform_list[3];
 }
 
 // slack
@@ -120,7 +127,7 @@ function getSlackUsers() {
         .get('https://slack.com/api/users.list', {
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + APP_ACCESS_TOKEN
+                Authorization: 'Bearer ' + config.app_access_token
             }
         })
         .then(res => {
@@ -134,12 +141,22 @@ function getSlackUsers() {
         })
 }
 
+function getUserGroups() {
+    return axios
+        .get('https://slack.com/api/usergroups.list', {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + config.app_access_token
+            }
+        });
+}
+
 function openSlackDlg(triggerId, payload) {
     return axios.post('https://slack.com/api/dialog.open', JSON.stringify({
         trigger_id: triggerId,
         dialog: JSON.stringify(payload)
     }), {
-        headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + APP_ACCESS_TOKEN}
+        headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + config.app_access_token}
     });
 }
 
@@ -147,15 +164,15 @@ function sendSlackMsg(responseUrl, payload) {
     return axios.post(responseUrl ? responseUrl : 'https://slack.com/api/chat.postMessage', JSON.stringify(payload), {
         headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + APP_ACCESS_TOKEN
+            Authorization: 'Bearer ' + config.app_access_token
         }
     });
 }
 
 function makeReportDlgPayload() {
-    json = {
+    const json = {
         callback_id: 'save_report',
-        title: '버그리포팅(스크린샷은 댓글로 달아주세요.)',
+        title: '오류리포팅(스크린샷은 댓글로)',
         submit_label: '등록',
         elements: [
             {
@@ -169,28 +186,29 @@ function makeReportDlgPayload() {
             },
             {
                 type: 'textarea',
-                label: '발생경로 & 재현가능여부',
-                name: 'path',
-                placeholder: '메인>스토어>자취가구피드>필터 영역\n재현가능: O',
-                value: null,
-                optional: false
-            },
-            {
-                type: 'text',
-                label: '사용환경',
+                label: '사용환경 & 발생경로 & 재현가능여부',
                 name: 'environment',
-                placeholder: 'iOS 11.4.1 / 앱버전 v6.1.77',
+                placeholder: '(필수정보 3종류)\n- 사용환경 : 안드로이드 파이 / 앱버전 v6.1.3\n- 발생경로 : 메인>스토어>자취가구피드>필터 영역\n- 재현가능여부 : O',
                 value: null,
                 optional: false
             },
             {
                 type: 'select',
-                label: '예상 담당자',
+                label: '예상 담당트랙',
+                name: 'track',
+                placeholder: null,
+                value: null,
+                optional: false,
+                options: config.track_list
+            },
+            {
+                type: 'select',
+                label: '예상 담당개발자',
                 name: 'assignee',
                 placeholder: null,
                 value: null,
                 optional: false,
-                options: DEVELOPER_LIST
+                options: config.developer_list
             },
             {
                 type: 'select',
@@ -199,7 +217,7 @@ function makeReportDlgPayload() {
                 placeholder: null,
                 value: null,
                 optional: false,
-                options: CHANNEL_LIST
+                options: config.channel_list
             },
         ]
     };
@@ -214,35 +232,35 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         short: false
     });
     fields.push({
-        title: '담당자',
-        value: '<@' + saveData.assigneeSlackUser.id + '>',
-        short: false
-    });
-    fields.push({
         title: '현상',
         value: saveData.input.situation,
         short: false
     });
     fields.push({
-        title: '발생경로 & 재현가능여부',
-        value: saveData.input.path,
-        short: false
-    });
-    fields.push({
-        title: '사용환경',
+        title: '사용환경 & 발생경로 & 재현가능여부',
         value: saveData.input.environment,
         short: false
     });
     fields.push({
+        title: '예상 담당트랙',
+        value: config.track_list[saveData.input.track].label + '\n<!subteam^' + saveData.trackSlackUserGroup.id + '|' + saveData.trackSlackUserGroup.handle + '>',
+        short: false
+    });
+    fields.push({
+        title: '예상 담당개발자',
+        value: '<@' + saveData.assigneeSlackUser.id + '>',
+        short: false
+    });
+    fields.push({
         title: '지라링크',
-        value: JIRA_SERVER_DOMAIN + '/browse/' + saveData.jiraReport.issueKey,
+        value: config.jira_server_domain + '/browse/' + saveData.jiraReport.issueKey,
         short: false
     });
     const json = {
         text: '<@' + config.qa_manager + '>',
         attachments: [
             {
-                title: '버그리포팅 등록 완료',
+                title: '오류리포팅 등록 완료',
                 color: '#35c5f0'
             },
             {
@@ -261,10 +279,10 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
 
 // jira
 function loginJira() {
-    return axios.post(JIRA_SERVER_DOMAIN + '/rest/auth/1/session',
+    return axios.post(config.jira_server_domain + '/rest/auth/1/session',
         JSON.stringify({
-            username: JIRA_USER_NAME,
-            password: JIRA_PWD
+            username: config.jira_username,
+            password: config.jira_pwd
         }),
         {
             headers: {
@@ -275,7 +293,7 @@ function loginJira() {
 }
 
 function getJiraUsers(setCookie) {
-    return axios.get(JIRA_SERVER_DOMAIN + '/rest/api/2/group/member?groupname=jira-software-users',
+    return axios.get(config.jira_server_domain + '/rest/api/2/group/member?groupname=jira-software-users',
         {
             headers: {
                 'Cookie': setCookie,
@@ -286,7 +304,7 @@ function getJiraUsers(setCookie) {
 }
 
 function createJiraIssue(setCookie, data) {
-    return axios.post(JIRA_SERVER_DOMAIN + '/rest/api/2/issue', JSON.stringify(data), {
+    return axios.post(config.jira_server_domain + '/rest/api/2/issue', JSON.stringify(data), {
         headers: {
             'Cookie': setCookie,
             'Content-Type': 'application/json'
@@ -295,7 +313,7 @@ function createJiraIssue(setCookie, data) {
 }
 
 function doJiraIssueTransition(setCookie, issueKey, data) {
-    return axios.post(JIRA_SERVER_DOMAIN + '/rest/api/2/issue/' + issueKey + '/transitions', JSON.stringify(data), {
+    return axios.post(config.jira_server_domain + '/rest/api/2/issue/' + issueKey + '/transitions', JSON.stringify(data), {
         headers: {
             'Cookie': setCookie,
             'Content-Type': 'application/json'
@@ -304,7 +322,7 @@ function doJiraIssueTransition(setCookie, issueKey, data) {
 }
 
 function editJiraIssue(setCookie, issueKey, data) {
-    return axios.put(JIRA_SERVER_DOMAIN + '/rest/api/2/issue/' + issueKey, JSON.stringify(data), {
+    return axios.put(config.jira_server_domain + '/rest/api/2/issue/' + issueKey, JSON.stringify(data), {
         headers: {
             'Cookie': setCookie,
             'Content-Type': 'application/json'
@@ -317,8 +335,9 @@ function makeJiraReportIssuePayload(saveData) {
     saveData.jiraReport.description = '';
     saveData.jiraReport.description += '\nh2. 보고자 \n\n' + saveData.reporterSlackUser.profile.display_name;
     saveData.jiraReport.description += '\nh2. 현상 \n\n' + saveData.input.situation;
-    saveData.jiraReport.description += '\nh2. 발생경로 & 재현가능여부\n\n' + saveData.input.path;
-    saveData.jiraReport.description += '\nh2. 사용환경 \n\n' + saveData.input.environment;
+    saveData.jiraReport.description += '\nh2. 사용환경 & 발생경로 & 재현가능여부\n\n' + saveData.input.environment;
+    saveData.jiraReport.description += '\nh2. 예상 담당트랙 \n\n' + config.track_list[saveData.input.track].label;
+    saveData.jiraReport.description += '\nh2. 예상 담당자 \n\n' + saveData.input.assignee;
 
     const json = {
         "fields": {
@@ -343,7 +362,7 @@ function makeJiraReportTransitionReadyPayload(platform) {
 }
 
 function makeJiraReportSlackLinkAdditionPayload(saveData) {
-    saveData.jiraReport.description += '\nh2. 슬랙링크 \n\n' + SLACK_DOMAIN + '/archives/' + saveData.input.channel + '/p' + saveData.slackMsg.ts.replace('.', '');
+    saveData.jiraReport.description += '\nh2. 슬랙링크 \n\n' + config.slack_domain + '/archives/' + saveData.input.channel + '/p' + saveData.slackMsg.ts.replace('.', '');
     const json = {
         "fields": {
             "description": saveData.jiraReport.description,
@@ -381,8 +400,11 @@ app.listen(PORT, () => {
 // loginJira()
 //     .then(res => {
 //         setCookie = res.headers['set-cookie'].join(';');
-//         return getSlackUsers();
+//         return getUserGroups();
 //     })
+//     .then(res =>{
+//         console.log(res.data);
+//     });
 //     .then(res => {
 //         slackUsers = res;
 //         return getJiraUsers(setCookie);
@@ -405,7 +427,7 @@ app.listen(PORT, () => {
 //         saveData.jiraReport.issueKey = res.data.key;
 //         return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
 //     })
-    // .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
+// .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
 // .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
 //     .then(res => editJiraIssues(platforms))
 //     .then(res => console.log(res.data))
