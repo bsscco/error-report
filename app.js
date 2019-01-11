@@ -188,8 +188,8 @@ function makeReportDlgPayload() {
                 type: 'textarea',
                 label: '사용환경 & 발생경로 & 재현가능여부',
                 name: 'environment',
-                placeholder: '(필수정보 3종류)\n- 사용환경 : 안드로이드 파이 / 앱버전 v6.1.3\n- 발생경로 : 메인>스토어>자취가구피드>필터 영역\n- 재현가능여부 : O',
-                value: null,
+                value: '(필수정보 3종류)\n- 사용환경 : \n- 발생경로 : \n- 재현가능여부 : O',
+                hint: '예) 사용환경 : Android파이 / 앱 v6.1.3 - 발생경로 : 메인>스토어홈>필터 영역',
                 optional: false
             },
             {
@@ -349,6 +349,7 @@ function makeJiraReportIssuePayload(saveData) {
             "priority": {"id": "1" /*HIGHEST*/},
             "description": saveData.jiraReport.description,
             "components": [saveData.platform.component],
+            "labels" : [config.track_list[saveData.input.track].jira_label]
         }
     };
     return json;
