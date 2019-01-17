@@ -54,9 +54,6 @@ app.post('/interact', (req, res) => {
                 console.log('gotUsergroups ' + res.data.usergroups.length);
                 for (const idx in res.data.usergroups) {
                     const userGroup = res.data.usergroups[idx];
-                    console.log(userGroup.id);
-                    console.log(saveData.input.track);
-                    console.log(config.track_list[saveData.input.track].user_group_handle);
                     if (userGroup.handle === config.track_list[saveData.input.track].user_group_handle) {
                         saveData.trackSlackUserGroup = userGroup;
                         break;
@@ -66,6 +63,7 @@ app.post('/interact', (req, res) => {
             })
             .then(res => {
                 console.log('gotJiraUsers');
+                const track = config.track_list[saveData.input.track];
                 slackUsers.filter(slackUser => {
                     res.data.values.filter(jiraUser => {
                         if (jiraUser.displayName === saveData.input.assignee && slackUser.profile.display_name === saveData.input.assignee) {
@@ -75,6 +73,9 @@ app.post('/interact', (req, res) => {
                     });
                     if (slackUser.id === body.user.id) {
                         saveData.reporterSlackUser = slackUser;
+                    }
+                    if (track.users && track.users.includes(slackUser.profile.display_name)) {
+                        saveData.trackSlackUsers.push(slackUser);
                     }
                 });
 
@@ -246,6 +247,11 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         value: config.track_list[saveData.input.track].label + '\n<!subteam^' + saveData.trackSlackUserGroup.id + '|' + saveData.trackSlackUserGroup.handle + '>',
         short: false
     });
+    if (saveData.trackSlackUsers) {
+        for (const idx in saveData.trackSlackUsers) {
+            fields[fields.length - 1].value += ' <@' + saveData.trackSlackUsers[idx].id + '>';
+        }
+    }
     fields.push({
         title: '예상 담당개발자',
         value: '<@' + saveData.assigneeSlackUser.id + '>',
@@ -336,7 +342,7 @@ function makeJiraReportIssuePayload(saveData) {
     saveData.jiraReport.description += '\nh2. 보고자 \n\n' + saveData.reporterSlackUser.profile.display_name;
     saveData.jiraReport.description += '\nh2. 현상 \n\n' + saveData.input.situation;
     saveData.jiraReport.description += '\nh2. 사용환경 & 발생경로 & 재현가능여부\n\n' + saveData.input.environment;
-    saveData.jiraReport.description += '\nh2. 예상 담당트랙 \n\n' + config.track_list[saveData.input.track].label;
+    saveData.jiraReport.description += '\n\nh2. 예상 담당트랙 \n\n' + config.track_list[saveData.input.track].label;
     saveData.jiraReport.description += '\nh2. 예상 담당자 \n\n' + saveData.input.assignee;
 
     const json = {
@@ -349,9 +355,11 @@ function makeJiraReportIssuePayload(saveData) {
             "priority": {"id": "1" /*HIGHEST*/},
             "description": saveData.jiraReport.description,
             "components": [saveData.platform.component],
-            "labels" : [config.track_list[saveData.input.track].jira_label]
         }
     };
+    if (config.track_list[saveData.input.track].jira_label) {
+        json.fields.labels = [config.track_list[saveData.input.track].jira_label];
+    }
     return json;
 }
 
