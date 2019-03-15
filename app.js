@@ -263,7 +263,7 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
         short: false
     });
     const json = {
-        text: '<@' + config.qa_manager + '>',
+        text: '',
         attachments: [
             {
                 title: '오류리포팅 등록 완료',
@@ -277,6 +277,9 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
             }
         ]
     };
+    for (const idx in config.qa_managers) {
+        json.text += '<@' + config.qa_managers[idx] + '> ';
+    }
     if (forChannelMsg) {
         json.channel = saveData.input.channel;
     }
