@@ -352,11 +352,11 @@ function makeJiraReportIssuePayload(saveData) {
         "fields": {
             "project": {"id": "10400"/*OK-KANBAN*/},
             "issuetype": {"id": "10103" /*BugType*/},
-            "summary": '[' + saveData.platform.platform + '] ' + saveData.input.situation.replace(/\n/g, ' ').substr(0, 100),
+            "summary": '[' + saveData.platform.platform + '] ' + convertUtf8mb4(saveData.input.situation).replace(/\n/g, ' ').substr(0, 100),
             "assignee": {"name": saveData.assigneeJiraUser.name},
             "reporter": {"name": "slack_bug"},
             "priority": {"id": "1" /*HIGHEST*/},
-            "description": saveData.jiraReport.description,
+            "description": convertUtf8mb4(saveData.jiraReport.description),
             "components": [saveData.platform.component],
         }
     };
@@ -383,6 +383,10 @@ function makeJiraReportSlackLinkAdditionPayload(saveData) {
     return json;
 }
 
+function convertUtf8mb4(str) {
+    const rx = new RegExp('[\uD800-\uDBFF][\uDC00-\uDFFF]');
+    return str.replace(rx, "??");
+}
 
 // Start the server
 const PORT = process.env.PORT || 10000;
@@ -393,54 +397,70 @@ app.listen(PORT, () => {
 });
 
 // 테스트 코드
-// const input = {
-//     situation: 'situationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituationsituation',
-//     path: 'path',
-//     environment: 'tttt',
-//     assignee: '비스코',
-//     channel: 'CASU375FD',
-// }
-// let saveData = {};
-// saveData.input = input;
-// saveData.platform = getPlatform(saveData.input.assignee);
-// saveData.reporterSlackUser = {profile: {display_name: '비스코'}};
-// let setCookie = '';
-// let slackUsers;
-// let jiraUsers;
-// let slackJiraUsers;
-//
-// loginJira()
-//     .then(res => {
-//         setCookie = res.headers['set-cookie'].join(';');
-//         return getUserGroups();
-//     })
-//     .then(res =>{
-//         console.log(res.data);
-//     });
-//     .then(res => {
-//         slackUsers = res;
-//         return getJiraUsers(setCookie);
-//     })
-//     .then(res => {
-//         jiraUsers = res.data.values;
-//
-//         slackJiraUsers = jiraUsers.filter(jiraUser => {
-//             slackUsers.filter(slackUser => {
-//                 if (jiraUser.displayName === saveData.input.assignee && saveData.input.assignee === slackUser.profile.display_name) {
-//                     saveData.assigneeSlackUser = slackUser;
-//                     saveData.assigneeJiraUser = jiraUser;
-//                 }
-//             });
-//         });
-//
-//         return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
-//     })
-//     .then(res => {
-//         saveData.jiraReport.issueKey = res.data.key;
-//         return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
-//     })
-// .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData))
-// .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
-//     .then(res => editJiraIssues(platforms))
-//     .then(res => console.log(res.data))
-//     .catch(err => console.log(JSON.stringify(err.response.data)));
+const input = {
+    situation: 'situationsituatio😭situationsituatio',
+    path: 'path',
+    environment: 'tttt',
+    track: '4',
+    assignee: '비스코',
+    channel: 'CASU375FD',
+}
+const saveData = {trackSlackUsers: []};
+saveData.input = input;
+saveData.platform = getPlatform(saveData.input.assignee);
+saveData.reporterSlackUser = {profile: {display_name: '비스코'}};
+let setCookie = '';
+let slackUsers;
+let jiraUsers;
+
+loginJira()
+    .then(res => {
+        console.log('logined');
+        setCookie = res.headers['set-cookie'].join(';');
+        return getSlackUsers();
+    })
+    .then(res => {
+        console.log('gotSlackUsers');
+        slackUsers = res;
+        return getUserGroups();
+    })
+    .then(res => {
+        console.log('gotUsergroups ' + res.data.usergroups.length);
+        for (const idx in res.data.usergroups) {
+            const userGroup = res.data.usergroups[idx];
+            if (userGroup.handle === config.track_list[saveData.input.track].user_group_handle) {
+                saveData.trackSlackUserGroup = userGroup;
+                break;
+            }
+        }
+        return getJiraUsers(setCookie);
+    })
+    .then(res => {
+        console.log('gotJiraUsers');
+        const track = config.track_list[saveData.input.track];
+        slackUsers.filter(slackUser => {
+            res.data.values.filter(jiraUser => {
+                if (jiraUser.displayName === saveData.input.assignee && slackUser.profile.display_name === saveData.input.assignee) {
+                    saveData.assigneeSlackUser = slackUser;
+                    saveData.assigneeJiraUser = jiraUser;
+                }
+            });
+            // if (slackUser.id === body.user.id) {
+            //     saveData.reporterSlackUser = slackUser;
+            // }
+            if (track.users && track.users.includes(slackUser.profile.display_name)) {
+                saveData.trackSlackUsers.push(slackUser);
+            }
+        });
+
+        return createJiraIssue(setCookie, makeJiraReportIssuePayload(saveData));
+    })
+    .then(res => {
+        saveData.jiraReport.issueKey = res.data.key;
+        return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
+    })
+    .then(res => sendSlackMsg(makeReportSavedMsgPayload(saveData)))
+    .then(res => sendSlackMsg(body.response_url, makeReportSavedMsgPayload(input)))
+    .then(res => editJiraIssues(platforms))
+    .then(res => console.log(res.data))
+    .catch(err => console.log(JSON.stringify(err.response.data)));
