@@ -590,7 +590,7 @@ function initThisMonthReportingAggregationSheet() {
                 '=sum(' + config.sheet.sheet_fields.test_cnt_col + config.sheet.sheet_fields.range_start_row + ':' + config.sheet.sheet_fields.test_cnt_col + ')',
                 ''
             ],
-            ['금액', '앱', '앱 카드', '웹', '웹 카드', '사내배포', '사내배포 카드', '@버그리포팅 집계로 검색'],
+            ['', '금액', '앱', '앱 카드', '웹', '웹 카드', '사내배포', '사내배포 카드'],
         ]
     };
     return axios.put('https://sheets.googleapis.com/v4/spreadsheets/' + urlencode(config.sheet.sheets_id) + '/values/' +
