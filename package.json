@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "ssh": "sudo gcloud compute ssh instance-1",
-    "deploy": "sudo gcloud compute scp --recurse *.json *.js *.sh instance-1:/home/bsscco/error-report",
-    "deploytest": "sudo gcloud compute scp --recurse *.json *.js *.sh instance-1:/home/bsscco/error-report-test"
+    "deploy": "sudo gcloud compute scp --recurse config.json google-service-account.json package.json *.js *.sh instance-1:/home/bsscco/error-report",
+    "deploytest": "sudo gcloud compute scp --recurse config.json google-service-account.json package.json *.js *.sh instance-1:/home/bsscco/error-report-test"
   },
   "author": "bsscco@gmail.com",
   "license": "ISC",
@@ -17,6 +17,7 @@
     "express": "^4.16.3",
     "googleapis": "^34.0.0",
     "moment": "^2.24.0",
-    "urlencode": "^1.1.0"
+    "urlencode": "^1.1.0",
+    "node-json-db": "^0.7.5"
   }
 }
