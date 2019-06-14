@@ -147,9 +147,25 @@ function completeReport(body) {
 
                 const needReleased = (input.channel.value !== 'CK7T2606Q'/*QA*/ && input.channel.value !== 'C96R019T2'/*사내배포*/);
                 if (needReleased) {
-                    versions.sort((a, b) => b.id - a.id);
+                    versions.sort((a, b) => {
+                        if (a.name > b.name) {
+                            return -1;
+                        } else if (b.name > a.name) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    });
                 } else {
-                    versions.sort((a, b) => a.id - b.id);
+                    versions.sort((a, b) => {
+                        if (b.name > a.name) {
+                            return -1;
+                        } else if (a.name > b.name) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    });
                 }
                 for (const idx in versions) {
                     const version = versions[idx];
@@ -902,12 +918,21 @@ function loginJiraAndGetVersionsPriorities() {
             //     userReleaseDate: "2019/02/19 00:00 AM",
             //     projectId: 10400,
             // },
+            versions.sort((a, b) => {
+                if (a.name > b.name) {
+                    return -1;
+                } else if (b.name > a.name) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            });
             const andVersions = [];
             const iosVersions = [];
             const webVersions = [];
             const serverVersions = [];
             versions.forEach(version => {
-                if (version.name.includes('AB') || version.name.includes('QA')) {
+                if (version.name.includes('AB') || version.name.includes('QA') || version.name.includes('리팩토링')) {
                     return;
                 }
                 if (andVersions.length < 5 && version.name.includes('And ')) {
@@ -923,10 +948,6 @@ function loginJiraAndGetVersionsPriorities() {
                     serverVersions.push(version);
                 }
             });
-            andVersions.sort((a, b) => b.id - a.id)
-            iosVersions.sort((a, b) => b.id - a.id)
-            webVersions.sort((a, b) => b.id - a.id)
-            serverVersions.sort((a, b) => b.id - a.id)
             jiraData.options.versions = [...andVersions, ...iosVersions, ...webVersions, ...serverVersions];
 
             return getPriorities(jiraData.setCookie);
