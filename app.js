@@ -144,9 +144,13 @@ function completeReport(body) {
         .then(versions => {
             if (saveData.platform.platform === 'Web' || saveData.platform.platform === 'Server') {
                 versions = versions.filter(version => version.name.includes(saveData.platform.platform + ' ') && !version.name.includes('AB') && !version.name.includes('QA'));
-                versions.sort((a, b) => b.id - a.id);
 
                 const needReleased = (input.channel.value !== 'CK7T2606Q'/*QA*/ && input.channel.value !== 'C96R019T2'/*사내배포*/);
+                if (needReleased) {
+                    versions.sort((a, b) => b.id - a.id);
+                } else {
+                    versions.sort((a, b) => a.id - b.id);
+                }
                 for (const idx in versions) {
                     const version = versions[idx];
                     if (version.released === needReleased) {
@@ -709,13 +713,13 @@ function makeAdditionalInputMsgPayload(input, options) {
                 text: "Select an item",
                 emoji: true
             },
-            options: config.developer_list.map(track => ({
+            options: config.developer_list.map(developer => ({
                 text: {
                     type: 'plain_text',
-                    text: track.label,
+                    text: developer.label,
                     emoji: true
                 },
-                value: track.value
+                value: developer.value
             })),
         }
     };
@@ -1229,8 +1233,8 @@ function updateReportingAggregationRow(rowIdx, nickname, rewards, appCnt, appCar
 }
 
 // Start the server
-// const PORT = process.env.PORT || 10000;
-const PORT = process.env.PORT || 55000;
+const PORT = process.env.PORT || 10000;
+// const PORT = process.env.PORT || 55000;
 app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}`);
     console.log('Press Ctrl+C to quit.');
