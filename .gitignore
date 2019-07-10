@@ -3,3 +3,4 @@ config.json
 data_schema.json
 .idea
 google-service-account.json
+reporting-tmp-db.json

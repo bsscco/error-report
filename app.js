@@ -12,6 +12,7 @@ const urlencode = require('urlencode');
 const moment = require('moment');
 const JsonDB = require('node-json-db');
 const db = new JsonDB("reporting-tmp-db", true, true);
+const processingMap = {};
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
@@ -31,10 +32,11 @@ app.post('/command', (req, res) => {
 app.post('/interact', (req, res) => {
     const body = JSON.parse(req.body.payload);
     console.log(JSON.stringify(body, null, 2));
-    res.send('');
 
     if (body.callback_id === 'save_report') {
-        saveReport(body);
+        saveReport(body)
+            .then(() => res.send(''))
+            .catch(err => handleRequestProcessingError(res, err));
     }
     else if (body.actions) {
         const actionId = body.actions[0].action_id;
@@ -43,53 +45,65 @@ app.post('/interact', (req, res) => {
             input.version = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'set_priority') {
             const input = db.getData('/' + body.user.id);
             input.priority = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'set_reproducing') {
             const input = db.getData('/' + body.user.id);
             input.reproducing = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'set_track') {
             const input = db.getData('/' + body.user.id);
             input.track = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'set_developer') {
             const input = db.getData('/' + body.user.id);
             input.assignee = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'set_channel') {
             const input = db.getData('/' + body.user.id);
             input.channel = body.actions[0].selected_option;
             db.push('/' + body.user.id, input);
 
-            sendAdditionalInputMsg(body, input);
+            sendAdditionalInputMsg(body, input)
+                .catch(err => handleRequestProcessingError(res, err));
         }
         else if (actionId === 'complete') {
-            completeReport(body);
+            completeReport(body)
+                .catch(err => handleRequestProcessingError(res, err));
         }
     }
 });
 
+function handleRequestProcessingError(response, error) {
+    console.log(error.toString());
+    response.status(500).send('서버 에러!');
+}
+
 function saveReport(body) {
     const input = body.submission;
 
-    loginJiraAndGetVersionsPriorities()
+    return loginJiraAndGetVersionsPriorities()
         .then(jiraData => {
             input.priority = {
                 text: {
@@ -109,15 +123,13 @@ function saveReport(body) {
 
             return sendSlackMsg(body.response_url, makeAdditionalInputMsgPayload(input, jiraData.options));
         })
-        .then(res => console.log(JSON.stringify(res.data, null, 2)))
-        .catch(err => console.log(err.toString()));
+        .then(res => console.log(JSON.stringify(res.data, null, 2)));
 }
 
 function sendAdditionalInputMsg(body, input) {
-    loginJiraAndGetVersionsPriorities()
+    return loginJiraAndGetVersionsPriorities()
         .then(jiraData => sendSlackMsg(body.response_url, makeAdditionalInputMsgPayload(input, jiraData.options)))
-        .then(res => console.log(JSON.stringify(res.data, null, 2)))
-        .catch(err => console.log(err.toString()));
+        .then(res => console.log(JSON.stringify(res.data, null, 2)));
 }
 
 function completeReport(body) {
@@ -134,7 +146,7 @@ function completeReport(body) {
     let slackUsers = [];
 
     console.log('loginJira()');
-    loginJira()
+    return loginJira()
         .then(res => {
             setCookie = res.headers['set-cookie'].join(';');
 
@@ -395,8 +407,7 @@ function completeReport(body) {
             db.delete('/' + body.user.id);
 
             console.log(JSON.stringify(res.data, null, 2));
-        })
-        .catch(err => console.log(err.toString()));
+        });
 }
 
 function checkInputValidation(body, input) {
