@@ -244,14 +244,30 @@ function completeReport(body) {
             return doJiraIssueTransition(setCookie, saveData.jiraReport.issueKey, makeJiraReportTransitionReadyPayload(saveData.platform));
         })
         .then(res => {
-            console.log('sendSlackMsg(", makeReportSavedMsgPayload(saveData, true))');
-            return sendSlackMsg('', makeReportSavedMsgPayload(saveData, true));
+            console.log('sendSlackMsg(\'\', makeReportSavedMsgPayload(saveData, true, false))');
+            return sendSlackMsg('', makeReportSavedMsgPayload(saveData, true, false));
         })
         .then(res => {
             saveData.slackMsg = {ts: res.data.ts};
 
-            console.log('sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false))');
-            return sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false));
+            console.log('sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false, false))');
+            return sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false, false));
+        })
+        .then(res => {
+            for (const idx in config.qa_managers) {
+                if (saveData.reporterSlackUser.id === config.qa_managers[idx]) {
+                    return new Promise(resolve => resolve())
+                }
+            }
+            if (saveData.input.priority.value != 1/*HIGHEST*/) {
+                return new Promise(resolve => resolve())
+            }
+            if (saveData.input.channel.value === 'C8U11TLBS'/*z_오류리포팅_앱*/ || saveData.input.channel.value === 'C713L3CTX'/*z_오류리포팅_웹*/) {
+                console.log('sendSlackMsg(\'\', makeReportSavedMsgPayload(saveData, false, true))');
+                return sendSlackMsg('', makeReportSavedMsgPayload(saveData, false, true));
+            } else {
+                return new Promise(resolve => resolve())
+            }
         })
         .then(res => {
             console.log('editJiraIssue()');
@@ -805,7 +821,7 @@ function makeAdditionalInputMsgPayload(input, options) {
     return json;
 }
 
-function makeReportSavedMsgPayload(saveData, forChannelMsg) {
+function makeReportSavedMsgPayload(saveData, forReportingChannel, forPoChannel) {
     const fields = [];
     fields.push({
         title: '보고자',
@@ -877,11 +893,18 @@ function makeReportSavedMsgPayload(saveData, forChannelMsg) {
             }
         ]
     };
-    for (const idx in config.qa_managers) {
-        json.text += '<@' + config.qa_managers[idx] + '> ';
+    if (!forPoChannel) {
+        for (const idx in config.qa_managers) {
+            json.text += '<@' + config.qa_managers[idx] + '> ';
+        }
     }
-    if (forChannelMsg) {
+    if (forReportingChannel) {
         json.channel = saveData.input.channel.value;
+        if (saveData.input.path === 'tttt') {
+            json.channel = 'CASU375FD';
+        }
+    } else if (forPoChannel) {
+        json.channel = 'CB34QM8SY';
         if (saveData.input.path === 'tttt') {
             json.channel = 'CASU375FD';
         }
