@@ -245,13 +245,13 @@ function completeReport(body) {
         })
         .then(res => {
             console.log('sendSlackMsg(\'\', makeReportSavedMsgPayload(saveData, true, false))');
-            return sendSlackMsg('', makeReportSavedMsgPayload(saveData, true, false));
+            return sendSlackMsg('', makeReportSavedMsgPayload(saveData, true));
         })
         .then(res => {
             saveData.slackMsg = {ts: res.data.ts};
 
             console.log('sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false, false))');
-            return sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false, false));
+            return sendSlackMsg(body.response_url, makeReportSavedMsgPayload(saveData, false));
         })
         .then(res => {
             for (const idx in config.qa_managers) {
@@ -263,8 +263,8 @@ function completeReport(body) {
                 return new Promise(resolve => resolve())
             }
             if (saveData.input.channel.value === 'C8U11TLBS'/*z_오류리포팅_앱*/ || saveData.input.channel.value === 'C713L3CTX'/*z_오류리포팅_웹*/) {
-                console.log('sendSlackMsg(\'\', makeReportSavedMsgPayload(saveData, false, true))');
-                return sendSlackMsg('', makeReportSavedMsgPayload(saveData, false, true));
+                console.log('sendSlackMsg(\'\', makeReportSavedMsgPayloadForPoChannel(saveData))');
+                return sendSlackMsg('', makeReportSavedMsgPayloadForPoChannel(saveData));
             } else {
                 return new Promise(resolve => resolve())
             }
@@ -821,7 +821,7 @@ function makeAdditionalInputMsgPayload(input, options) {
     return json;
 }
 
-function makeReportSavedMsgPayload(saveData, forReportingChannel, forPoChannel) {
+function makeReportSavedMsgPayload(saveData, forReportingChannel) {
     const fields = [];
     fields.push({
         title: '보고자',
@@ -893,21 +893,25 @@ function makeReportSavedMsgPayload(saveData, forReportingChannel, forPoChannel) 
             }
         ]
     };
-    if (!forPoChannel) {
-        for (const idx in config.qa_managers) {
-            json.text += '<@' + config.qa_managers[idx] + '> ';
-        }
+    for (const idx in config.qa_managers) {
+        json.text += '<@' + config.qa_managers[idx] + '> ';
     }
     if (forReportingChannel) {
         json.channel = saveData.input.channel.value;
         if (saveData.input.path === 'tttt') {
             json.channel = 'CASU375FD';
         }
-    } else if (forPoChannel) {
-        json.channel = 'CB34QM8SY';
-        if (saveData.input.path === 'tttt') {
-            json.channel = 'CASU375FD';
-        }
+    }
+    return json;
+}
+
+function makeReportSavedMsgPayloadForPoChannel(saveData) {
+    const json = {
+        channel: 'CB34QM8SY',
+        text: config.slack_domain + '/archives/' + saveData.input.channel.value + '/p' + saveData.slackMsg.ts.replace('.', ''),
+    };
+    if (saveData.input.path === 'tttt') {
+        json.channel = 'CASU375FD';
     }
     return json;
 }
