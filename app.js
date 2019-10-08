@@ -1031,9 +1031,15 @@ function getPriorities(setCookie) {
         .then(res => new Promise(resolve => resolve(res.data)));
 }
 
-function getJiraUsers(setCookie) {
+function getJiraUsers(setCookie, startAt, jiraUsers) {
+    if (startAt == null) {
+        startAt = 0
+    }
+    if(jiraUsers == null) {
+        jiraUsers = []
+    }
     return axios
-        .get(config.jira_server_domain + '/rest/api/2/group/member?groupname=jira-software-users',
+        .get(config.jira_server_domain + '/rest/api/2/group/member?groupname=jira-software-users&maxResults=50&startAt=' + startAt,
             {
                 headers: {
                     'Cookie': setCookie,
@@ -1041,7 +1047,13 @@ function getJiraUsers(setCookie) {
                 }
             }
         )
-        .then(res => new Promise(resolve => resolve(res.data.values)));
+        .then(res => {
+            if (res.data.isLast === false) {
+                return getJiraUsers(setCookie, startAt + 50, jiraUsers.concat(res.data.values));
+            } else {
+                return new Promise(resolve => resolve(jiraUsers.concat(res.data.values)));
+            }
+        });
 }
 
 function createJiraIssue(setCookie, data) {
