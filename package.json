@@ -14,7 +14,7 @@
   "dependencies": {
     "axios": "^0.18.0",
     "body-parser": "^1.18.3",
-    "express": "^4.16.3",
+    "express": "^4.17.3",
     "googleapis": "^34.0.0",
     "moment": "^2.24.0",
     "urlencode": "^1.1.0",
